@@ -158,12 +158,14 @@ Resources:
           ToPort: -1
           CidrIp: 0.0.0.0/0
       VpcId: !Ref VPC
+
   SageMakerInstanceSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       IpProtocol: '-1'
       GroupId: !Ref SageMakerInstanceSecurityGroup
       SourceSecurityGroupId: !Ref SageMakerInstanceSecurityGroup
+
   VPCEndpointSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -177,12 +179,14 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-endpoint-security-group
+
   EndpointSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       IpProtocol: '-1'
       GroupId: !Ref VPCEndpointSecurityGroup
       SourceSecurityGroupId: !Ref SageMakerInstanceSecurityGroup
+
   SageMakerExecutionRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -253,6 +257,7 @@ Resources:
         - !Ref VPCEndpointSecurityGroup
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.sagemaker.api'
       VpcId: !Ref VPC
+
   VPCEndpointSageMakerRuntime:
     Type: AWS::EC2::VPCEndpoint
     Properties:
@@ -271,6 +276,7 @@ Resources:
         - !Ref VPCEndpointSecurityGroup
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.sagemaker.runtime'
       VpcId: !Ref VPC
+
   VPCEndpointSTS:
     Type: 'AWS::EC2::VPCEndpoint'
     Properties:
@@ -289,6 +295,7 @@ Resources:
         - !Ref VPCEndpointSecurityGroup
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.sts'
       VpcId: !Ref VPC
+
   VPCEndpointCW:
     Type: 'AWS::EC2::VPCEndpoint'
     Properties:
@@ -307,6 +314,7 @@ Resources:
         - !Ref VPCEndpointSecurityGroup
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.monitoring'
       VpcId: !Ref VPC
+
   VPCEndpointCWL:
     Type: 'AWS::EC2::VPCEndpoint'
     Properties:
@@ -325,6 +333,7 @@ Resources:
         - !Ref VPCEndpointSecurityGroup
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.logs'
       VpcId: !Ref VPC
+
   VPCEndpointECR:
     Type: 'AWS::EC2::VPCEndpoint'
     Properties:
@@ -343,6 +352,7 @@ Resources:
         - !Ref VPCEndpointSecurityGroup
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.dkr'
       VpcId: !Ref VPC
+
   VPCEndpointECRAPI:
     Type: 'AWS::EC2::VPCEndpoint'
     Properties:
@@ -361,8 +371,18 @@ Resources:
         - !Ref VPCEndpointSecurityGroup
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.api'
       VpcId: !Ref VPC
-  
-  
+
+  S3BucketStudio:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+
   StudioDomain:
     Type: AWS::SageMaker::Domain
     Properties:
