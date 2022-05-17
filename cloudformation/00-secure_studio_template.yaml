@@ -404,3 +404,35 @@ Resources:
       UserProfileName: studio-user
       UserSettings: 
         ExecutionRole: !GetAtt SageMakerExecutionRole.Arn
+
+  S3BucketStudioSSM:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /s3/bucket/studio
+      Tier: Standard
+      Type: String
+      Value: !Ref S3BucketStudio
+
+  PrivateSubnetSSM:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /networking/subnet/private
+      Tier: Standard
+      Type: String
+      Value: !Ref PrivateSubnet1
+
+  StudioSecurityGroupSSM:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /networking/sg
+      Tier: Standard
+      Type: String
+      Value: !Ref SageMakerInstanceSecurityGroup
+
+  VpcIdSSM:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /networking/vpc
+      Tier: Standard
+      Type: String
+      Value: !Ref VPC

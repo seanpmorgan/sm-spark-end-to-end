@@ -12,7 +12,8 @@ Mappings:
 Parameters:
   S3BucketStudio:
     Type: String
-    Description: S3 Bucket used by Studio
+    Description: S3 Bucket used by Studio. Not necessary if you run the previous template that stores the value in SSM
+    Default: ""
   EmrClusterName:
     Type: String
     Description: EMR cluster Name.
@@ -53,13 +54,29 @@ Parameters:
       - emr-6.4.0
   SecurityGroupId:
     Type: String
-    Description: Security Group used by Studio
+    Description: Security Group used by Studio. Not necessary if you run the previous template that stores the value in SSM
+    Default: ""
   SubnetId:
     Type: String
-    Description: Subnet Id used by Studio
+    Description: Subnet Id used by Studio. Not necessary if you run the previous template that stores the value in
+    Default: ""
   VpcId:
     Type: String
-    Description: VPC Id used by SageMaker Studio
+    Description: VPC Id used by SageMaker Studio. Not necessary if you run the previous template that stores the value in SSM
+    Default: ""
+Conditions:
+  S3BucketStudioEmpty: !Equals
+    - !Ref S3BucketStudio
+    - ''
+  SecurityGroupIdEmpty: !Equals
+    - !Ref SecurityGroupId
+    - ''
+  SubnetIdEmpty: !Equals
+    - !Ref SubnetId
+    - ''
+  VpcIdEmpty: !Equals
+    - !Ref VpcId
+    - ''
 Resources:
   S3Bucket:
     Type: 'AWS::S3::Bucket'
@@ -85,7 +102,11 @@ Resources:
           FromPort: -1
           ToPort: -1
           CidrIp: 0.0.0.0/0
-      VpcId: !Ref VpcId
+      VpcId:
+        !If
+          - VpcIdEmpty
+          - '{{resolve:ssm:/networking/vpc}}'
+          - !Ref VpcId
   workerSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
@@ -95,7 +116,11 @@ Resources:
           FromPort: -1
           ToPort: -1
           CidrIp: 0.0.0.0/0
-      VpcId: !Ref VpcId
+      VpcId:
+        !If
+          - VpcIdEmpty
+          - '{{resolve:ssm:/networking/vpc}}'
+          - !Ref VpcId
   emrServiceSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
@@ -105,7 +130,11 @@ Resources:
           FromPort: -1
           ToPort: -1
           CidrIp: 0.0.0.0/0
-      VpcId: !Ref VpcId
+      VpcId:
+        !If
+          - VpcIdEmpty
+          - '{{resolve:ssm:/networking/vpc}}'
+          - !Ref VpcId
   emrMasterIngressSelfICMP:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
@@ -161,7 +190,11 @@ Resources:
       IpProtocol: tcp
       FromPort: 8998
       ToPort: 8998
-      SourceSecurityGroupId: !Ref SecurityGroupId
+      SourceSecurityGroupId:
+        !If
+          - SecurityGroupIdEmpty
+          - '{{resolve:ssm:/networking/sg}}'
+          - !Ref SecurityGroupId
   emrMasterIngressHiveSG:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
@@ -169,7 +202,11 @@ Resources:
       IpProtocol: tcp
       FromPort: 10000
       ToPort: 10000
-      SourceSecurityGroupId: !Ref SecurityGroupId
+      SourceSecurityGroupId:
+        !If
+          - SecurityGroupIdEmpty
+          - '{{resolve:ssm:/networking/sg}}'
+          - !Ref SecurityGroupId
   emrMasterIngressServiceSg:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
@@ -446,7 +483,11 @@ Resources:
       IpProtocol: tcp
       FromPort: 88
       ToPort: 88
-      SourceSecurityGroupId: !Ref SecurityGroupId
+      SourceSecurityGroupId:
+        !If
+          - SecurityGroupIdEmpty
+          - '{{resolve:ssm:/networking/sg}}'
+          - !Ref SecurityGroupId
   emrMasterIngressKDCAdminSG:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
@@ -454,7 +495,11 @@ Resources:
       IpProtocol: tcp
       FromPort: 749
       ToPort: 749
-      SourceSecurityGroupId: !Ref SecurityGroupId
+      SourceSecurityGroupId:
+        !If
+          - SecurityGroupIdEmpty
+          - '{{resolve:ssm:/networking/sg}}'
+          - !Ref SecurityGroupId
   emrMasterIngressKinit464SG:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
@@ -462,7 +507,11 @@ Resources:
       IpProtocol: tcp
       FromPort: 464
       ToPort: 464
-      SourceSecurityGroupId: !Ref SecurityGroupId
+      SourceSecurityGroupId:
+        !If
+          - SecurityGroupIdEmpty
+          - '{{resolve:ssm:/networking/sg}}'
+          - !Ref SecurityGroupId
   allowEMRFSAccessForUser1:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -497,7 +546,11 @@ Resources:
     Properties:
       ServiceToken: !GetAtt CopyZipsFunction.Arn
       DestBucket: !Ref S3Bucket
-      SourceBucket: !Ref S3BucketStudio
+      SourceBucket:
+        !If
+          - S3BucketStudioEmpty
+          - '{{resolve:ssm:/s3/bucket/studio}}'
+          - !Ref S3BucketStudio
       Prefix: artifacts/lambdas/
       Objects:
         - !FindInMap 
@@ -641,7 +694,11 @@ Resources:
           InstanceType: !Ref MasterInstanceType
           Market: ON_DEMAND
           Name: masterNode
-        Ec2SubnetId: !Ref SubnetId
+        Ec2SubnetId:
+          !If
+            - SubnetIdEmpty
+            - '{{resolve:ssm:/networking/subnet/private}}'
+            - !Ref SubnetId
         EmrManagedMasterSecurityGroup: !Ref mainSecurityGroup
         EmrManagedSlaveSecurityGroup: !Ref workerSecurityGroup
         ServiceAccessSecurityGroup: !Ref emrServiceSecurityGroup
