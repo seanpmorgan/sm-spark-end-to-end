@@ -3,8 +3,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: >
   This cloudformation template enables SageMaker Studio to connect to EMR clusters.
   This template is for an account without a pre-existing SageMaker Studio Domain & SageMaker User Profile - it creates these.
-  It creates the Studio Domain in a private VPC and establishes connectivity with EMR via No-Auth as described in
-     "https://aws.amazon.com/blogs/machine-learning/perform-interactive-data-engineering-and-data-science-workflows-from-amazon-sagemaker-studio-notebooks/"
+  It creates the Studio Domain in a private VPC and establishes connectivity with EMR via No-Auth.
 
 Mappings:
   VpcConfigurations:
