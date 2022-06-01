@@ -1,0 +1,784 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  This cloudformation template enables SageMaker Studio to connect to EMR clusters.
+  This template is for an account without a pre-existing SageMaker Studio Domain & SageMaker User Profile - it creates these.
+  It creates the Studio Domain in a private VPC and establishes connectivity with EMR via No-Auth.
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      datascience: 'arn:aws:sagemaker:us-east-1:081325390199:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:us-east-1:663277389841:image/sagemaker-data-wrangler-1.0
+    us-east-2:
+      datascience: 'arn:aws:sagemaker:us-east-2:429704687514:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:us-east-2:415577184552:image/sagemaker-data-wrangler-1.0
+    us-west-1:
+      datascience: 'arn:aws:sagemaker:us-west-1:742091327244:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:us-west-1:926135532090:image/sagemaker-data-wrangler-1.0
+    us-west-2:
+      datascience: 'arn:aws:sagemaker:us-west-2:236514542706:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:us-west-2:174368400705:image/sagemaker-data-wrangler-1.0
+    af-south-1:
+      datascience: 'arn:aws:sagemaker:af-south-1:559312083959:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:af-south-1:143210264188:image/sagemaker-data-wrangler-1.0
+    ap-east-1:
+      datascience: 'arn:aws:sagemaker:ap-east-1:493642496378:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:ap-east-1:707077482487:image/sagemaker-data-wrangler-1.0
+    ap-south-1:
+      datascience: 'arn:aws:sagemaker:ap-south-1:394103062818:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:ap-south-1:089933028263:image/sagemaker-data-wrangler-1.0
+    ap-northeast-2:
+      datascience: 'arn:aws:sagemaker:ap-northeast-2:806072073708:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:ap-northeast-2:131546521161:image/sagemaker-data-wrangler-1.0
+    ap-southeast-1:
+      datascience: 'arn:aws:sagemaker:ap-southeast-1:492261229750:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:ap-southeast-1:119527597002:image/sagemaker-data-wrangler-1.0
+    ap-southeast-2:
+      datascience: 'arn:aws:sagemaker:ap-southeast-2:452832661640:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:ap-southeast-2:422173101802:image/sagemaker-data-wrangler-1.0
+    ap-northeast-1:
+      datascience: 'arn:aws:sagemaker:ap-northeast-1:102112518831:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:ap-northeast-1:649008135260:image/sagemaker-data-wrangler-1.0
+    ca-central-1:
+      datascience: 'arn:aws:sagemaker:ca-central-1:310906938811:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:ca-central-1:557239378090:image/sagemaker-data-wrangler-1.0
+    eu-central-1:
+      datascience: 'arn:aws:sagemaker:eu-central-1:936697816551:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:eu-central-1:024640144536:image/sagemaker-data-wrangler-1.0
+    eu-west-1:
+      datascience: 'arn:aws:sagemaker:eu-west-1:470317259841:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:eu-west-1:245179582081:image/sagemaker-data-wrangler-1.0
+    eu-west-2:
+      datascience: 'arn:aws:sagemaker:eu-west-2:712779665605:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:eu-west-2:894491911112:image/sagemaker-data-wrangler-1.0
+    eu-west-3:
+      datascience: 'arn:aws:sagemaker:eu-west-3:615547856133:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:eu-west-3:807237891255:image/sagemaker-data-wrangler-1.0
+    eu-north-1:
+      datascience: 'arn:aws:sagemaker:eu-north-1:243637512696:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:eu-north-1:054986407534:image/sagemaker-data-wrangler-1.0
+    eu-south-1:
+      datascience: >-
+        arn:aws:sagemaker:eu-south-1:488287956546:image/sagemaker-data-wrangler-1.0
+      datawrangler: 'arn:aws:sagemaker:eu-south-1:592751261982:image/datascience-1.0'
+    sa-east-1:
+      datascience: 'arn:aws:sagemaker:sa-east-1:782484402741:image/datascience-1.0'
+      datawrangler: >-
+        arn:aws:sagemaker:sa-east-1:424196993095:image/sagemaker-data-wrangler-1.0
+
+  VpcConfigurations:
+    cidr:
+      Vpc: 10.0.0.0/16
+      PublicSubnet1: 10.0.10.0/24
+      PrivateSubnet1: 10.0.20.0/24
+ 
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !FindInMap 
+        - VpcConfigurations
+        - cidr
+        - Vpc
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-VPC'
+ 
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-IGW'
+ 
+  InternetGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+ 
+  PublicSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select 
+        - 0
+        - !GetAZs ''
+      CidrBlock: !FindInMap 
+        - VpcConfigurations
+        - cidr
+        - PublicSubnet1
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName} Public Subnet (AZ1)'
+ 
+  PrivateSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select 
+        - 0
+        - !GetAZs ''
+      CidrBlock: !FindInMap 
+        - VpcConfigurations
+        - cidr
+        - PrivateSubnet1
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName} Private Subnet (AZ1)'
+ 
+  NatGateway1EIP:
+    Type: 'AWS::EC2::EIP'
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+ 
+  NatGateway1:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId: !GetAtt 
+        - NatGateway1EIP
+        - AllocationId
+      SubnetId: !Ref PublicSubnet1
+ 
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName} Public Routes'
+ 
+  DefaultPublicRoute:
+    Type: 'AWS::EC2::Route'
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+ 
+  PublicSubnet1RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+ 
+  PrivateRouteTable1:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName} Private Routes (AZ1)'
+ 
+  PrivateSubnet1RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+ 
+  PrivateSubnet1InternetRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+  
+  S3Endpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcEndpointType: Gateway
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - '*'
+            Resource:
+              - '*'
+      VpcId: !Ref VPC
+      RouteTableIds:
+        - !Ref PrivateRouteTable1
+ 
+  SageMakerInstanceSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: SMSG
+      GroupDescription: Security group with no ingress rule
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref VPC
+
+  SageMakerInstanceSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: '-1'
+      GroupId: !Ref SageMakerInstanceSecurityGroup
+      SourceSecurityGroupId: !Ref SageMakerInstanceSecurityGroup
+
+  VPCEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow TLS for VPC Endpoint
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-endpoint-security-group
+
+  EndpointSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: '-1'
+      GroupId: !Ref VPCEndpointSecurityGroup
+      SourceSecurityGroupId: !Ref SageMakerInstanceSecurityGroup
+
+  DefaultPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: SageMakerBasePolicy
+            Effect: Allow
+            Action:
+              - 'application-autoscaling:DeleteScalingPolicy'
+              - 'application-autoscaling:DeleteScheduledAction'
+              - 'application-autoscaling:DeregisterScalableTarget'
+              - 'application-autoscaling:DescribeScalableTargets'
+              - 'application-autoscaling:DescribeScalingActivities'
+              - 'application-autoscaling:DescribeScalingPolicies'
+              - 'application-autoscaling:DescribeScheduledActions'
+              - 'application-autoscaling:PutScalingPolicy'
+              - 'application-autoscaling:PutScheduledAction'
+              - 'application-autoscaling:RegisterScalableTarget'
+              - 'cloudwatch:DeleteAlarms'
+              - 'cloudwatch:DescribeAlarms'
+              - 'cloudwatch:GetMetricData'
+              - 'cloudwatch:GetMetricStatistics'
+              - 'cloudwatch:ListMetrics'
+              - 'cloudwatch:PutMetricAlarm'
+              - 'cloudwatch:PutMetricData'
+              - 'ec2:CreateNetworkInterface'
+              - 'ec2:CreateNetworkInterfacePermission'
+              - 'ec2:DeleteNetworkInterface'
+              - 'ec2:DeleteNetworkInterfacePermission'
+              - 'ec2:DescribeDhcpOptions'
+              - 'ec2:DescribeNetworkInterfaces'
+              - 'ec2:DescribeRouteTables'
+              - 'ec2:DescribeSecurityGroups'
+              - 'ec2:DescribeSubnets'
+              - 'ec2:DescribeVpcEndpoints'
+              - 'ec2:DescribeVpcs'
+              - 'elastic-inference:Connect'
+              - 'elasticmapreduce:CreatePersistentAppUI'
+              - 'elasticmapreduce:DescribeCluster'
+              - 'elasticmapreduce:DescribePersistentAppUI'
+              - 'elasticmapreduce:DescribeSecurityConfiguration'
+              - 'elasticmapreduce:ListClusters'
+              - 'elasticmapreduce:ListInstances'
+              - 'elasticmapreduce:GetPersistentAppUIPresignedURL'
+              - 'elasticmapreduce:GetOnClusterAppUIPresignedURL'
+              - 'iam:GetRole'
+              - 'iam:ListRoles'
+              - 'iam:PassRole'
+              - 'lambda:InvokeFunction'
+              - 'lambda:ListFunctions'
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:DescribeLogStreams'
+              - 'logs:GetLogEvents'
+              - 'logs:PutLogEvents'
+              - 'sts:AssumeRole'
+            Resource: '*'
+          - Sid: SageMakerBasePolicy2
+            Effect: Allow
+            Action:
+              - 'elasticmapreduce:DescribeCluster'
+              - 'elasticmapreduce:ListInstanceGroups'
+            Resource: !Sub "arn:${AWS::Partition}:elasticmapreduce:*:*:cluster/*"
+
+  KMSPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "kms:CreateGrant"
+              - "kms:Decrypt"
+              - "kms:DescribeKey"
+              - "kms:Encrypt"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey"
+              - "kms:ListKeys"
+              - "kms:ListAliases"
+            Resource:
+              - "*"
+
+  S3Policy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - 's3:Create*'
+            Effect: Allow
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - 's3:AbortMultipartUpload'
+              - 's3:DeleteObject'
+              - 's3:Describe*'
+              - 's3:GetObject'
+              - 's3:PutBucket*'
+              - 's3:PutObject*'
+              - 's3:GetBucket*'
+              - 's3:ListBucket'
+            Resource:
+              - '*'
+
+  ServicesPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'infrastructure_templates:*'
+              - 'cloudwatch:*'
+              - 'codecommit:*'
+              - 'codebuild:*'
+              - 'ecr:*'
+              - 'lambda:*'
+              - 'logs:*'
+              - 'sagemaker:*'
+              - 'servicecatalog:*'
+              - 'ssm:*'
+              - 'sts:GetCallerIdentity'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - 'iam:PassRole'
+            Resource:
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/*'
+
+  SageMakerExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - infrastructure_templates.amazonaws.com
+                - codebuild.amazonaws.com
+                - lambda.amazonaws.com
+                - sagemaker.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - !Ref DefaultPolicy
+        - !Ref KMSPolicy
+        - !Ref S3Policy
+        - !Ref ServicesPolicy
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSageMakerFullAccess"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonS3ReadOnlyAccess"
+  
+  VPCEndpointSagemakerAPI:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.sagemaker.api'
+      VpcId: !Ref VPC
+
+  VPCEndpointSageMakerRuntime:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.sagemaker.runtime'
+      VpcId: !Ref VPC
+
+  VPCEndpointSTS:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.sts'
+      VpcId: !Ref VPC
+
+  VPCEndpointCW:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.monitoring'
+      VpcId: !Ref VPC
+
+  VPCEndpointCWL:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.logs'
+      VpcId: !Ref VPC
+
+  VPCEndpointECR:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.dkr'
+      VpcId: !Ref VPC
+
+  VPCEndpointECRAPI:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.api'
+      VpcId: !Ref VPC
+
+  S3BucketStudio:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+
+  StudioDomain:
+    Type: AWS::SageMaker::Domain
+    Properties:
+      AppNetworkAccessType: VpcOnly
+      AuthMode: IAM
+      DomainName: StudioDomain
+      VpcId: !Ref VPC
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      DefaultUserSettings:
+        ExecutionRole: !GetAtt SageMakerExecutionRole.Arn
+        SecurityGroups:
+          - !Ref SageMakerInstanceSecurityGroup
+
+  EnableSageMakerProjects:
+    Type: 'Custom::ResourceForEnablingSageMakerProjects'
+    Properties:
+      ServiceToken: !GetAtt
+        - EnableSageMakerProjectsLambda
+        - Arn
+      ExecutionRole: !GetAtt
+        - SageMakerExecutionRole
+        - Arn
+
+  EnableSageMakerProjectsLambda:
+    Type: 'AWS::Lambda::Function'
+    DependsOn: StudioDomain
+    Properties:
+      Code:
+        ZipFile: |
+          # Function: EnableSagemakerProjects
+          # Purpose:  Enables Sagemaker Projects
+          import json
+          import boto3
+          import cfnresponse
+          from botocore.exceptions import ClientError
+
+          client = boto3.client("sagemaker")
+          sc_client = boto3.client("servicecatalog")
+          def lambda_handler(event, context):
+              try:
+                  response_status = cfnresponse.SUCCESS
+                  if "RequestType" in event and event["RequestType"] == "Create":
+                      enable_sm_projects(event["ResourceProperties"]["ExecutionRole"])
+                  cfnresponse.send(event, context, response_status, {}, "")
+              except ClientError as exception:
+                  print(exception)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {}, physicalResourceId=event.get("PhysicalResourceId"), reason=str(exception))
+
+          def enable_sm_projects(studio_role_arn):
+              # enable Project on account level (accepts portfolio share)
+              response = client.enable_sagemaker_servicecatalog_portfolio()
+              # associate studio role with portfolio
+              response = sc_client.list_accepted_portfolio_shares()
+              portfolio_id = ""
+              for portfolio in response["PortfolioDetails"]:
+                  if portfolio["ProviderName"] == "Amazon SageMaker":
+                      portfolio_id = portfolio["Id"]
+              response = sc_client.associate_principal_with_portfolio(
+                  PortfolioId=portfolio_id,
+                  PrincipalARN=studio_role_arn,
+                  PrincipalType="IAM"
+              )
+      Description: Enable Sagemaker Projects
+      Handler: index.lambda_handler
+      MemorySize: 128
+      Role: !GetAtt
+        - SageMakerExecutionRole
+        - Arn
+      Runtime: python3.8
+      Timeout: 120
+
+  SageMakerStudioUserProfile:
+    Type: 'AWS::SageMaker::UserProfile'
+    Properties:
+      DomainId: !Ref StudioDomain
+      UserProfileName: data-scientist
+
+  JupyterApp:
+    Type: 'AWS::SageMaker::App'
+    DependsOn: SageMakerStudioUserProfile
+    Properties:
+      AppName: default
+      AppType: JupyterServer
+      DomainId: !Ref StudioDomain
+      UserProfileName: data-scientist
+
+  DataScienceApp:
+    Type: 'AWS::SageMaker::App'
+    DependsOn: SageMakerStudioUserProfile
+    Properties:
+      AppName: sm-mlops-datascience-ml-t3-medium
+      AppType: KernelGateway
+      DomainId: !Ref StudioDomain
+      ResourceSpec:
+        InstanceType: ml.t3.medium
+        SageMakerImageArn: !FindInMap
+          - RegionMap
+          - !Ref 'AWS::Region'
+          - datascience
+      UserProfileName: data-scientist
+
+  DeleteKernelGatewayAppsNoKGCondition:
+    Type: 'Custom::DeleteKernelGatewayApps'
+    DependsOn: SageMakerStudioUserProfile
+    Properties:
+      ServiceToken: !GetAtt
+        - DeleteKernelGatewayAppsLambda
+        - Arn
+      DomainId: !Ref StudioDomain
+
+  DeleteKernelGatewayAppsKGCondition:
+    Type: 'Custom::DeleteKernelGatewayApps'
+    DependsOn:
+      - DataScienceApp
+    Properties:
+      ServiceToken: !GetAtt
+        - DeleteKernelGatewayAppsLambda
+        - Arn
+      DomainId: !Ref StudioDomain
+
+  DeleteKernelGatewayAppsLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        ZipFile: |
+          # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+          # SPDX-License-Identifier: MIT-0
+          import time
+          import boto3
+          import logging
+          import cfnresponse
+          from botocore.exceptions import ClientError
+          sm_client = boto3.client('sagemaker')
+          logger = logging.getLogger(__name__)
+          def delete_apps(domain_id):
+              logging.info(f'Start deleting apps for domain id: {domain_id}')
+              try:
+                  sm_client.describe_domain(DomainId=domain_id)
+              except:
+                  logging.info(f'Cannot retrieve {domain_id}')
+                  return
+              for p in sm_client.get_paginator('list_apps').paginate(DomainIdEquals=domain_id):
+                  for a in p['Apps']:
+                      if a['AppType'] == 'KernelGateway' and a['Status'] != 'Deleted':
+                          sm_client.delete_app(DomainId=a['DomainId'], UserProfileName=a['UserProfileName'], AppType=a['AppType'], AppName=a['AppName'])
+
+              apps = 1
+              while apps:
+                  apps = 0
+                  for p in sm_client.get_paginator('list_apps').paginate(DomainIdEquals=domain_id):
+                      apps += len([a['AppName'] for a in p['Apps'] if a['AppType'] == 'KernelGateway' and a['Status'] != 'Deleted'])
+                  logging.info(f'Number of active KernelGateway apps: {str(apps)}')
+                  time.sleep(5)
+              logger.info(f'KernelGateway apps for {domain_id} deleted')
+              return
+          def lambda_handler(event, context):
+              response_data = {}
+              physicalResourceId = event.get('PhysicalResourceId')
+              try:
+                  if event['RequestType'] in ['Create', 'Update']:
+                      physicalResourceId = event.get('ResourceProperties')['DomainId']
+
+                  elif event['RequestType'] == 'Delete':
+                      delete_apps(physicalResourceId)
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, physicalResourceId=physicalResourceId)
+              except ClientError as exception:
+                  logging.error(exception)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, response_data, physicalResourceId=physicalResourceId, reason=str(exception))
+      Description: Delete KernelGateway apps to clean up
+      Handler: index.lambda_handler
+      MemorySize: 128
+      Role: !GetAtt
+        - SageMakerExecutionRole
+        - Arn
+      Runtime: python3.8
+      Timeout: 900
+
+  S3BucketStudioSSM:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /s3/bucket/studio
+      Tier: Standard
+      Type: String
+      Value: !Ref S3BucketStudio
+
+  SageMakerExecutionRoleSSM:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /iam/role/sagemaker
+      Tier: Standard
+      Type: String
+      Value: !GetAtt SageMakerExecutionRole.Arn
+
+  PrivateSubnetSSM:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /networking/subnet/private
+      Tier: Standard
+      Type: String
+      Value: !Ref PrivateSubnet1
+
+  StudioSecurityGroupSSM:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /networking/sg
+      Tier: Standard
+      Type: String
+      Value: !Ref SageMakerInstanceSecurityGroup
+
+  VpcIdSSM:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /networking/vpc
+      Tier: Standard
+      Type: String
+      Value: !Ref VPC

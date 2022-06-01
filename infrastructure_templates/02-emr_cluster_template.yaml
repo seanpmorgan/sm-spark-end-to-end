@@ -17,6 +17,7 @@ Parameters:
   EmrClusterName:
     Type: String
     Description: EMR cluster Name.
+    Default: "EMRClusterStudio"
   MasterInstanceType:
     Type: String
     Description: Instance type of the EMR main node.
@@ -48,7 +49,7 @@ Parameters:
   EmrReleaseVersion:
     Type: String
     Description: The release version of EMR to launch.
-    Default: emr-5.33.1
+    Default: emr-6.4.0
     AllowedValues:
       - emr-5.33.1
       - emr-6.4.0
