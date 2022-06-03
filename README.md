@@ -17,9 +17,9 @@ In order to interact from Amazon SageMaker Studio with EMR, it's necessary to fo
 linked blogpost.
 
 Alternatively, it's possible to setup the environment by applying the [CloudFormation](./infrastructure_templates) templates:
-1. [00-secure_studio_template.yml](infrastructure_templates/00-secure_studio_template.yaml): This template creates a secure studio environment,
+1. [00-secure_studio_template.yml](infrastructure_templates/00-secure_studio_template.yml): This template creates a secure studio environment,
 with VPC, Nat Gateway, Public and Private Subnets, and a Security Group for Studio
-2. [01-emr_template.yml](infrastructure_templates/02-emr_cluster_template.yaml): This template creates the EMR cluster and links it to the networking
+2. [01-emr_template.yml](infrastructure_templates/02-emr_cluster_template.yml): This template creates the EMR cluster and links it to the networking
 configuration defined for SageMaker Studio
 
 Alternatively, it's possible to skip the previous step by adding the following prerequisites:
@@ -28,7 +28,7 @@ Alternatively, it's possible to skip the previous step by adding the following p
 * S3 Endpoint created
 * IAM Role linked to studio with EMR permissions
 
-It's possible to create an EMR cluster by using the [Cloudformation](infrastructure_templates/02-emr_cluster_template.yaml) template provided.
+It's possible to create an EMR cluster by using the [Cloudformation](infrastructure_templates/02-emr_cluster_template.yml) template provided.
 
 ## Content of the lab
 

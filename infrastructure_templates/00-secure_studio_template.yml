@@ -376,7 +376,7 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
-              - 'infrastructure_templates:*'
+              - 'cloudformation:*'
               - 'cloudwatch:*'
               - 'codecommit:*'
               - 'codebuild:*'
@@ -403,7 +403,7 @@ Resources:
           - Effect: Allow
             Principal:
               Service:
-                - infrastructure_templates.amazonaws.com
+                - cloudformation.amazonaws.com
                 - codebuild.amazonaws.com
                 - lambda.amazonaws.com
                 - sagemaker.amazonaws.com
